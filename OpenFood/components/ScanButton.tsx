@@ -1,68 +1,48 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { launchCamera, MediaType, ImagePickerResponse } from 'react-native-image-picker';
 import { Colors } from '../constants/colors';
 
+// 1. A única propriedade que este componente precisa é a função 'onPress'
+//    que será fornecida pela tela que o utiliza (a HomeScreen).
 type ScanButtonProps = {
-  onScanComplete?: (imageUri: string) => void;
-  onError?: (error: string) => void;
+  onPress: () => void;
 };
 
-const ScanButton: React.FC<ScanButtonProps> = ({ onScanComplete, onError }) => {
-  const handleCameraLaunch = () => {
-    const options = {
-      mediaType: 'photo' as MediaType,
-      includeBase64: false,
-      maxHeight: 2000,
-      maxWidth: 2000,
-      quality: 0.8,
-    };
-
-    launchCamera(options, (response: ImagePickerResponse) => {
-      if (response.didCancel) {
-        return;
-      }
-
-      if (response.errorMessage) {
-        const errorMsg = `Erro na câmera: ${response.errorMessage}`;
-        onError?.(errorMsg);
-        Alert.alert('Erro', errorMsg);
-        return;
-      }
-
-      if (response.assets && response.assets[0]) {
-        const imageUri = response.assets[0].uri;
-        if (imageUri) {
-          onScanComplete?.(imageUri);
-          // Aqui você pode processar a imagem para detectar códigos
-          // Por exemplo, usar react-native-qrcode-local-image para QR codes
-        }
-      }
-    });
-  };
-
+// 2. Recebemos a propriedade 'onPress' e a usamos diretamente.
+const ScanButton: React.FC<ScanButtonProps> = ({ onPress }) => {
   return (
-    <TouchableOpacity style={styles.scanButton} onPress={handleCameraLaunch}>
-      <Icon name="camera" size={22} color="#fff" />
-      <Text style={styles.scanText}>Escanear Código</Text>
+    // 3. O 'onPress' do TouchableOpacity executa a função que veio "de fora".
+    //    Neste caso, será a função 'handleScan' da HomeScreen.
+    <TouchableOpacity style={styles.button} onPress={onPress}>
+      <Icon name="camera" size={22} color={Colors.text || '#fff'} />
+      <Text style={styles.buttonText}>Escanear Código</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  scanButton: {
+  button: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.primary,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 28, // Bordas mais arredondadas para um visual moderno
+    marginTop: 16,
+    // Sombra para dar um efeito de elevação
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  scanText: {
-    color: '#fff',
+  buttonText: {
+    color: Colors.text || '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginLeft: 10,
   },
 });
 

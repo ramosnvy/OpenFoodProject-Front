@@ -1,28 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StackScreenProps } from '@react-navigation/stack';
+
+// Importe os tipos e componentes
+import { RootStackParamList } from '../navigation/BottomTabNavigator'; // <-- Verifique o caminho
 import { Colors } from '../constants/colors';
 import SearchInput from '../components/SearchInput';
 import ScanButton from '../components/ScanButton';
 import FavoriteList from '../components/FavoriteList';
 import useFavorites from '../hooks/useFavorites';
 
-// Define navigation param list types for proper TypeScript support
-type RootStackParamList = {
-  HomeScreen: undefined;
-  ProductDetails: { productId: string };
-  Scanner: undefined;
+// ===================================================================
+// Componente Interno para Exibir os Favoritos
+// Ele só será chamado quando 'userToken' for uma string válida.
+// ===================================================================
+const FavoritesSection: React.FC<{ userToken: string }> = ({ userToken }) => {
+  // 1. O hook agora é chamado aqui, com a certeza de que `userToken` é uma string.
+  const { favorites, loading, error, refetch } = useFavorites(userToken);
+
+  if (error) {
+    Alert.alert(
+      'Erro ao carregar favoritos',
+      error,
+      [{ text: 'Tentar novamente', onPress: refetch }, { text: 'OK' }]
+    );
+  }
+
+  return (
+    <>
+      <Text style={styles.subtitle}>Favoritos</Text>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Carregando favoritos...</Text>
+        </View>
+      ) : (
+        <FavoriteList
+          favorites={favorites}
+          onPressFavorite={(id) => { /* Adicione a navegação se necessário */ }}
+        />
+      )}
+    </>
+  );
 };
 
-type HomeScreenProps = {
-  navigation: StackNavigationProp<RootStackParamList, 'HomeScreen'>;
-};
+// ===================================================================
+// Componente Principal da Tela
+// ===================================================================
+type HomeScreenProps = StackScreenProps<RootStackParamList, 'HomeScreen'>;
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [barcode, setBarcode] = useState('');
-  
-  const userToken = localStorage.getItem('userToken') || 'mamou';
-  const { favorites, loading, error, refetch } = useFavorites(userToken);
+  const [userToken, setUserToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadUserToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        setUserToken(token || 'mamou');
+      } catch (e) {
+        console.error("Falha ao carregar o userToken do AsyncStorage", e);
+        setUserToken('mamou');
+      }
+    };
+    loadUserToken();
+  }, []);
 
   const handleSearch = () => {
     if (barcode.trim()) {
@@ -34,84 +77,63 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('Scanner');
   };
 
-  const handleFavoritePress = (id: string) => {
-    navigation.navigate('ProductDetails', { productId: id });
-  };
-
-  // Função para tentar novamente em caso de erro
-  const handleRetry = () => {
-    refetch();
-  };
-
-  // Exibir erro se houver
-  if (error) {
-    Alert.alert(
-      'Erro ao carregar favoritos',
-      error,
-      [
-        { text: 'Tentar novamente', onPress: handleRetry },
-        { text: 'OK', style: 'cancel' }
-      ]
-    );
-  }
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Buscar Produto</Text>
       
-      {/* Componente de entrada de código de barras */}
       <SearchInput
         value={barcode}
         onChangeText={setBarcode}
         onSearch={handleSearch}
       />
-      
-      {/* Componente de lista de favoritos */}
-      <Text style={styles.subtitle}>Favoritos</Text>
-      
-      {loading ? (
+      <ScanButton onPress={handleScan} />
+
+      {/* 2. Lógica de renderização condicional: */}
+      {userToken ? (
+        // Se o token já foi carregado, renderiza a seção de favoritos
+        <FavoritesSection userToken={userToken} />
+      ) : (
+        // Enquanto o token não for carregado, mostra um loading
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Carregando favoritos...</Text>
         </View>
-      ) : (
-        <FavoriteList
-          favorites={favorites}
-          onPressFavorite={handleFavoritePress}
-        />
       )}
     </View>
   );
 };
 
+// Seus estilos
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    padding: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.primaryDark,
-    marginBottom: 20,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.primary,
-    marginBottom: 8,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: Colors.primary,
-  },
-});
+    container: {
+      flex: 1,
+      backgroundColor: Colors.background,
+      padding: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: Colors.primaryDark,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: Colors.primary,
+      marginBottom: 8,
+      marginTop: 24,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 8,
+      fontSize: 16,
+      color: Colors.primary,
+    },
+  });
+  
 
 export default HomeScreen;
