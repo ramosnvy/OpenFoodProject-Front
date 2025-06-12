@@ -9,11 +9,14 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Feather';
 import { Colors } from '../constants/colors';
-import { Product, mockProduct } from '../models/Product';
+import { Product } from '../models/Product';
 import DietBadge from '../components/DietBadge';
 import NutritionalInfoCard from '../components/NutritionalInfoCard';
 import IngredientsList from '../components/IngredientsList';
@@ -28,24 +31,244 @@ const ProductDetailsView = () => {
   const route = useRoute<RouteProp<ParamList, 'ProductDetails'>>();
   const [product, setProduct] = useState<Product | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
-  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Função para mapear os dados da API para o formato do Product
+  const mapApiDataToProduct = (apiData: any): Product => {
+    return {
+      id: apiData._id,
+      name: apiData.name,
+      ean: apiData.ean,
+      description: apiData.description,
+      price: 0, // A API não retorna preço, então definimos como 0
+      imageUrl: apiData.imageUrl || 'https://via.placeholder.com/400x300',
+      restaurantName: apiData.restaurantName,
+      category: apiData.category,
+      rating: 0, // A API não retorna rating, então definimos como 0
+      reviewCount: 0, // A API não retorna reviewCount, então definimos como 0
+      ingredients: apiData.ingredients ? 
+        apiData.ingredients.map((ing: any) => 
+          typeof ing === 'string' ? ing : ing.ingredient
+        ) : [],
+      allergens: apiData.allergens || [],
+      nutritionalInfo: {
+        calories: apiData.nutritionalInfo?.calories || 0,
+        proteins: apiData.nutritionalInfo?.protein || 0,
+        carbs: apiData.nutritionalInfo?.carbohydrates || 0,
+        fats: apiData.nutritionalInfo?.fat || 0,
+        sodium: apiData.nutritionalInfo?.sodium || 0
+      },
+      reviews: [], // A API não retorna reviews, então definimos como array vazio
+      isVegetarian: apiData.isVegetarian || false,
+      isVegan: apiData.isVegan || false,
+      isGlutenFree: apiData.isGlutenFree || false,
+      isLactoseFree: apiData.isLactoseFree || false
+    };
+  };
+
+  // Função para verificar se o produto está favoritado
+const checkIfFavorited = async (barcode: string) => {
+  try {
+    const userToken = await AsyncStorage.getItem('userToken');
+
+    const response = await fetch(`http://localhost:3000/api/favorites/${userToken}`, {
+      method: 'GET'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+
+      console.log('Lista de favoritos:', data);
+      
+      // Verifica se existe algum produto com EAN igual ao barcode
+      const isFavorited = data.some((favorite: any) => favorite.product.ean === barcode);
+      
+      setIsFavorite(isFavorited);
+    } else {
+      // Se a resposta não foi ok, considera como não favoritado
+      setIsFavorite(false);
+    }
+  } catch (error) {
+    console.error('Erro ao verificar se produto está favoritado:', error);
+    // Em caso de erro, considera como não favoritado
+    setIsFavorite(false);
+  }
+};
+
+  // Função para carregar o produto da API
+  const loadProduct = async (barcode: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`http://localhost:3000/api/products/${barcode}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Produto não encontrado');
+        }
+        throw new Error('Erro ao carregar produto');
+      }
+
+      const apiData = await response.json();
+      const mappedProduct = mapApiDataToProduct(apiData);
+      setProduct(mappedProduct);
+      
+      // Verificar se o produto está favoritado após carregar
+      await checkIfFavorited(mappedProduct.ean);
+    } catch (err) {
+      console.error('Erro ao carregar produto:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+      Alert.alert(
+        'Erro',
+        'Não foi possível carregar o produto. Verifique sua conexão e tente novamente.',
+        [
+          { text: 'Voltar', onPress: () => navigation.goBack() },
+          { text: 'Tentar novamente', onPress: () => loadProduct(barcode) }
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Em um aplicativo real, buscaríamos o produto pelo ID
-    // Aqui, estamos usando o mockProduct como exemplo
-    setProduct(mockProduct);
+    const productId = route.params?.productId;
+    if (productId) {
+      loadProduct(productId);
+    } else {
+      setError('ID do produto não fornecido');
+      setLoading(false);
+    }
   }, [route.params?.productId]);
 
-  if (!product) {
+  const toggleFavorite = async () => {
+    try {
+      // Recuperar dados do usuário do AsyncStorage
+      const userToken = await AsyncStorage.getItem('userToken');
+      
+      if (!userToken) {
+        Alert.alert(
+          'Erro',
+          'Você precisa estar logado para favoritar produtos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (!product?.id) {
+        Alert.alert('Erro', 'Produto não encontrado.');
+        return;
+      }
+
+
+      if(isFavorite){
+        const response = await fetch(`http://localhost:3000/api/favorites/${userToken}/${product.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'}
+      });
+
+     setIsFavorite(false);
+
+      }else{
+      const favoriteData = {
+        userId: userToken,
+        productId: product.id
+      };
+
+      const response = await fetch('http://localhost:3000/api/favorites/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'},
+        body: JSON.stringify(favoriteData)
+      });
+
+      console.log( JSON.stringify(favoriteData));
+      const data = await response.json();
+
+      if (response.ok) {
+        // Atualiza o estado local apenas se a requisição foi bem-sucedida
+        setIsFavorite(!isFavorite);
+        console.log('Favorito atualizado:', data);
+        
+        // Feedback visual opcional
+        Alert.alert(
+          'Sucesso',
+          isFavorite ? 'Produto removido dos favoritos' : 'Produto adicionado aos favoritos',
+          [{ text: 'OK' }]
+        );
+      } else {
+        console.error('Erro ao atualizar favorito:', data.message || 'Erro desconhecido');
+        Alert.alert(
+          'Erro',
+          data.message || 'Não foi possível atualizar os favoritos.',
+          [{ text: 'OK' }]
+        );
+      }
+    }
+    } catch (error) {
+      console.error('Erro na requisição de favoritos:', error);
+      Alert.alert(
+        'Erro',
+        'Erro de conexão. Verifique sua internet e tente novamente.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // Tela de carregamento
+  if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Carregando...</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-left" size={24} color={Colors.buttonText} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Carregando...</Text>
+          <View style={styles.favoriteButton} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Carregando produto...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-  };
+  // Tela de erro
+  if (error || !product) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-left" size={24} color={Colors.buttonText} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Erro</Text>
+          <View style={styles.favoriteButton} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Icon name="alert-circle" size={48} color={Colors.error} />
+          <Text style={styles.errorText}>{error || 'Produto não encontrado'}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => route.params?.productId && loadProduct(route.params.productId)}
+          >
+            <Text style={styles.retryButtonText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -59,7 +282,7 @@ const ProductDetailsView = () => {
         >
           <Icon name="arrow-left" size={24} color={Colors.buttonText} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{product.name}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
         <TouchableOpacity 
           style={styles.favoriteButton}
           onPress={toggleFavorite}
@@ -67,7 +290,7 @@ const ProductDetailsView = () => {
           <Icon 
             name={isFavorite ? "heart" : "heart"} 
             size={24} 
-            color={isFavorite ? Colors.primaryLight : Colors.white}
+            color={isFavorite ? Colors.success : Colors.white}
           />
         </TouchableOpacity>
       </View>
@@ -91,13 +314,19 @@ const ProductDetailsView = () => {
           
           <Text style={styles.restaurantName}>{product.restaurantName}</Text>
           
-          <View style={styles.ratingContainer}>
-            <Icon name="star" size={18} color={Colors.secondary} />
-            <Text style={styles.rating}>{product.rating.toFixed(1)}</Text>
-            <Text style={styles.reviewCount}>({product.reviewCount} avaliações)</Text>
-          </View>
+          {/* Só mostra rating se tiver dados */}
+          {product.reviewCount > 0 && (
+            <View style={styles.ratingContainer}>
+              <Icon name="star" size={18} color={Colors.secondary} />
+              <Text style={styles.rating}>{product.rating.toFixed(1)}</Text>
+              <Text style={styles.reviewCount}>({product.reviewCount} avaliações)</Text>
+            </View>
+          )}
           
-          <Text style={styles.price}>R$ {product.price.toFixed(2)}</Text>
+          {/* Só mostra preço se tiver valor */}
+          {product.price > 0 && (
+            <Text style={styles.price}>R$ {product.price.toFixed(2)}</Text>
+          )}
           
           <Text style={styles.description}>{product.description}</Text>
           
@@ -111,21 +340,25 @@ const ProductDetailsView = () => {
         </View>
         
         {/* Lista de Ingredientes */}
-        <IngredientsList 
-          ingredients={product.ingredients} 
-          allergens={product.allergens} 
-        />
+        {product.ingredients.length > 0 && (
+          <IngredientsList 
+            ingredients={product.ingredients} 
+            allergens={product.allergens} 
+          />
+        )}
         
         {/* Informações Nutricionais */}
         <NutritionalInfoCard nutritionalInfo={product.nutritionalInfo} />
         
-        {/* Avaliações */}
-        <View style={styles.reviewsSection}>
-          <Text style={styles.sectionTitle}>Avaliações</Text>
-          {product.reviews.map(review => (
-            <ReviewItem key={review.id} review={review} />
-          ))}
-        </View>
+        {/* Avaliações - só mostra se tiver reviews */}
+        {product.reviews.length > 0 && (
+          <View style={styles.reviewsSection}>
+            <Text style={styles.sectionTitle}>Avaliações</Text>
+            {product.reviews.map(review => (
+              <ReviewItem key={review.id} review={review} />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -141,6 +374,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 24,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 24,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   header: {
     flexDirection: 'row',

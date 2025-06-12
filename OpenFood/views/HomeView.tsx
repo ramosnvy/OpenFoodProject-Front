@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors } from '../constants/colors';
 import SearchInput from '../components/SearchInput';
 import ScanButton from '../components/ScanButton';
 import FavoriteList from '../components/FavoriteList';
+import useFavorites from '../hooks/useFavorites';
 
 // Define navigation param list types for proper TypeScript support
 type RootStackParamList = {
@@ -17,14 +18,11 @@ type HomeScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, 'HomeScreen'>;
 };
 
-const mockFavorites = [
-  { id: '1', name: 'Maçã Fuji' },
-  { id: '2', name: 'Iogurte Natural' },
-  { id: '3', name: 'Arroz Integral' },
-];
-
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [barcode, setBarcode] = useState('');
+  
+  const userToken = localStorage.getItem('userToken') || 'mamou';
+  const { favorites, loading, error, refetch } = useFavorites(userToken);
 
   const handleSearch = () => {
     if (barcode.trim()) {
@@ -40,19 +38,48 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('ProductDetails', { productId: id });
   };
 
+  // Função para tentar novamente em caso de erro
+  const handleRetry = () => {
+    refetch();
+  };
+
+  // Exibir erro se houver
+  if (error) {
+    Alert.alert(
+      'Erro ao carregar favoritos',
+      error,
+      [
+        { text: 'Tentar novamente', onPress: handleRetry },
+        { text: 'OK', style: 'cancel' }
+      ]
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Buscar Produto</Text>
-
+      
       {/* Componente de entrada de código de barras */}
-      <SearchInput value={barcode} onChangeText={setBarcode} onSearch={handleSearch} />
-
-      {/* Componente de botão de escanear */}
-      <ScanButton onPress={handleScan} />
-
+      <SearchInput
+        value={barcode}
+        onChangeText={setBarcode}
+        onSearch={handleSearch}
+      />
+      
       {/* Componente de lista de favoritos */}
       <Text style={styles.subtitle}>Favoritos</Text>
-      <FavoriteList favorites={mockFavorites} onPressFavorite={handleFavoritePress} />
+      
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Carregando favoritos...</Text>
+        </View>
+      ) : (
+        <FavoriteList
+          favorites={favorites}
+          onPressFavorite={handleFavoritePress}
+        />
+      )}
     </View>
   );
 };
@@ -74,6 +101,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
     marginBottom: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: Colors.primary,
   },
 });
 

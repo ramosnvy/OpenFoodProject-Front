@@ -1,11 +1,17 @@
 import React from 'react';
-import { FlatList, StyleSheet } from 'react-native';
-import FavoriteCard from './FavoriteCard';
+import { FlatList, Text } from 'react-native';
+import FavoriteCard from './FavoriteCard'; // ajuste o caminho se necessário
 
-type FavoriteListProps = {
-  favorites: Array<{ id: string, name: string }>;
-  onPressFavorite: (id: string) => void;
-};
+interface Favorite {
+  id: string;
+  name: string;
+  ean: string;
+}
+
+interface FavoriteListProps {
+  favorites: Favorite[];
+  onPressFavorite: (ean: string) => void;
+}
 
 const FavoriteList: React.FC<FavoriteListProps> = ({ favorites, onPressFavorite }) => {
   return (
@@ -13,11 +19,13 @@ const FavoriteList: React.FC<FavoriteListProps> = ({ favorites, onPressFavorite 
       data={favorites}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => (
-        <FavoriteCard
-          productId={item.id} // Adicionando productId aqui
-          name={item.name}
-          onPress={() => onPressFavorite(item.id)}
-        />
+        <>
+          <FavoriteCard
+            productId={item.id}
+            name={item.name}
+            onPress={() => onPressFavorite(item.ean)}
+          />
+        </>
       )}
       showsVerticalScrollIndicator={false}
     />

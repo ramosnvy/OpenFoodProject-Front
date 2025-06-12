@@ -24,40 +24,8 @@ const ProfileScreen = () => {
     logout();
   };
 
-  const handleImagePress = () => {
-    Alert.alert('Trocar foto', 'Aqui você pode escolher uma nova foto.');
-  };
-
   return (
     <View style={styles.container}>
-      <ProfilePicture imageUri={imageUri} onPress={handleImagePress} />
-      <TextInput
-        style={styles.input}
-        placeholder="Nome"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Idade"
-        value={age}
-        onChangeText={setAge}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Restrições Alimentares"
-        value={dietaryRestrictions}
-        onChangeText={setDietaryRestrictions}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Nova Senha"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <Button title="Salvar Alterações" onPress={handleEditProfile} />
       <Button title="Deslogar" onPress={handleLogout} />
     </View>
   );
