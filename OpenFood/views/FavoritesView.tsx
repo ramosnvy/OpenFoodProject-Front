@@ -15,7 +15,7 @@ type FavoritesScreenProps = StackScreenProps<RootStackParamList, 'Favorites'>;
 interface FavoritesListProps {
   userToken: string;
   navigation: FavoritesScreenProps['navigation'];
-  refreshTrigger: number; // << 4. Adicionamos a nova prop "gatilho"
+  refreshTrigger: number;
 }
 
 const FavoritesList: React.FC<FavoritesListProps> = ({ userToken, navigation, refreshTrigger }) => {
@@ -30,7 +30,7 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ userToken, navigation, re
     }
   }, [refreshTrigger]); // Dependência: o gatilho
 
-  // O resto do seu componente permanece IDÊNTICO
+
   const handleFavoritePress = (productId: string) => {
     navigation.navigate('ProductDetails', { productId });
   };
@@ -52,10 +52,12 @@ const FavoritesList: React.FC<FavoritesListProps> = ({ userToken, navigation, re
     <FavoriteCard
       productId={item.id}
       name={item.name}
-      // Corrigindo aqui para passar o ID correto, que parece ser 'item.id' e não 'item.ean'
-      onPress={() => handleFavoritePress(item.id)} 
+      imageUrl={item.imageUrl}
+      onPress={() => handleFavoritePress(item.ean)} 
     />
   );
+  
+
 
   const renderEmptyComponent = () => (
     <View style={styles.emptyContainer}>

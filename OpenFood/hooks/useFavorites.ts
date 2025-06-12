@@ -39,6 +39,7 @@ export interface FavoriteItem {
   id: string;
   name: string;
   ean: string;
+  imageUrl: string;
 }
 
 const useFavorites = (userToken: string) => {
@@ -57,7 +58,7 @@ const useFavorites = (userToken: string) => {
 
     try {
     console.log(userToken);
-      const response =  await fetch(`http://192.168.0.101:3000/api/favorites/${userToken}`, {
+      const response =  await fetch(`http://192.168.70.97:3000/api/favorites/${userToken}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +74,8 @@ const useFavorites = (userToken: string) => {
       const mappedFavorites: FavoriteItem[] = data.map(favorite => ({
         id: favorite.product._id,
         name: favorite.product.name,
-        ean: favorite.product.ean
+        ean: favorite.product.ean,
+        imageUrl:favorite.product.imageUrl
       }));
 
       setFavorites(mappedFavorites);

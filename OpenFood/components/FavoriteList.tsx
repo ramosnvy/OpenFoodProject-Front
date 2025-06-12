@@ -6,6 +6,7 @@ interface Favorite {
   id: string;
   name: string;
   ean: string;
+  imageUrl:string;
 }
 
 interface FavoriteListProps {
@@ -23,6 +24,7 @@ const FavoriteList: React.FC<FavoriteListProps> = ({ favorites, onPressFavorite 
           <FavoriteCard
             productId={item.id}
             name={item.name}
+            imageUrl={item.imageUrl}
             onPress={() => onPressFavorite(item.ean)}
           />
         </>

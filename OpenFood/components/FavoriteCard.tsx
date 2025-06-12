@@ -1,20 +1,25 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { Colors } from '../constants/colors';
 
 type FavoriteCardProps = {
-  productId: string; // Adicionando o productId
+  productId: string;
   name: string;
+  imageUrl: string;
   onPress: () => void;
 };
 
-const FavoriteCard: React.FC<FavoriteCardProps> = ({ productId, name, onPress }) => {
+const FavoriteCard: React.FC<FavoriteCardProps> = ({ productId, name, imageUrl, onPress }) => {
   return (
     <TouchableOpacity style={styles.favoriteCard} onPress={onPress}>
-      <View style={styles.imagePlaceholder}>
-        <Icon name="image" size={32} color="#ccc" />
-      </View>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.image} />
+      ) : (
+        <View style={styles.imagePlaceholder}>
+          <Icon name="image" size={32} color="#ccc" />
+        </View>
+      )}
       <View style={styles.favoriteInfo}>
         <Text style={styles.favoriteName}>{name}</Text>
         <Text style={styles.favoriteDetails}>Ver detalhes</Text>
@@ -37,6 +42,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+  },
+  image: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
   },
   imagePlaceholder: {
     width: 60,
