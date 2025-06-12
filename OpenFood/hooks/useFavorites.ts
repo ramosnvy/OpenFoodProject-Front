@@ -57,7 +57,7 @@ const useFavorites = (userToken: string) => {
 
     try {
     console.log(userToken);
-      const response =  await fetch(`http://192.168.70.97:3000/api/favorites/${userToken}`, {
+      const response =  await fetch(`http://192.168.0.101:3000/api/favorites/${userToken}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

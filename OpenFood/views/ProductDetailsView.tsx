@@ -72,7 +72,7 @@ const checkIfFavorited = async (barcode: string) => {
   try {
     const userToken = await AsyncStorage.getItem('userToken');
 
-    const response = await fetch(`http://192.168.70.97:3000/api/favorites/${userToken}`, {
+    const response = await fetch(`http://192.168.0.101:3000/api/favorites/${userToken}`, {
       method: 'GET'
     });
 
@@ -102,7 +102,7 @@ const checkIfFavorited = async (barcode: string) => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`http://192.168.70.97:3000/api/products/${barcode}`);
+      const response = await fetch(`http://192.168.0.101:3000/api/products/${barcode}`);
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -164,7 +164,7 @@ const checkIfFavorited = async (barcode: string) => {
 
 
       if(isFavorite){
-        const response = await fetch(`http://192.168.70.97:3000/api/favorites/${userToken}/${product.id}`, {
+        const response = await fetch(`http://192.168.0.101:3000/api/favorites/${userToken}/${product.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'}
@@ -178,7 +178,7 @@ const checkIfFavorited = async (barcode: string) => {
         productId: product.id
       };
 
-      const response = await fetch('http://192.168.70.97:3000/api/favorites/', {
+      const response = await fetch('http://192.168.0.101:3000/api/favorites/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'},

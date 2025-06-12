@@ -36,7 +36,7 @@ const handleRegister = async () => {
       password: password
     };
 
-    const response = await fetch('http://192.168.70.97:3000/api/auth/register', {
+    const response = await fetch('http://192.168.0.101:3000/api/auth/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
