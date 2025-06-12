@@ -22,10 +22,47 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleRegister = () => {
-    // Lógica de criação de conta
-    navigation.navigate('Login');
-  };
+  // Versão com dados fixos
+const handleRegister = async () => {
+    try {
+    // Validação básica
+    if (!email || !password) {
+      alert('Por favor, preencha todos os campos');
+      return;
+    }
+
+    const userData = {
+      email: email,
+      password: password
+    };
+
+    const response = await fetch('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData)
+    });
+
+    const data = await response.json();
+    console.log(data);
+
+    if (response.ok) {
+      console.log('Usuário registrado com sucesso:', data);
+      // Limpar campos do formulário se necessário
+      setEmail('');
+      setPassword('');
+      navigation.navigate('Login');
+    } else {
+      console.error('Erro no registro:', data.message || 'Erro desconhecido');
+      alert(data.message || 'Erro ao criar conta');
+    }
+  } catch (error) {
+    console.error('Erro na requisição:', error);
+    alert('Erro de conexão. Tente novamente.');
+  }
+};
+
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
